@@ -1,6 +1,6 @@
 // api/transcribe.js
 export default async function handler(req, res) {
-  // Handle CORS preflight requests
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,19 +13,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Set CORS headers for actual request
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   try {
     const { audioUrl, audioData } = req.body;
+    const whisperApiKey = process.env.WHISPER_API_KEY;
 
-    console.log('Received transcription request:', { 
-      hasAudioUrl: !!audioUrl, 
-      hasAudioData: !!audioData,
-      audioDataLength: audioData ? audioData.length : 0
-    });
+    if (!whisperApiKey) {
+      throw new Error('Whisper API key not configured in Vercel environment variables');
+    }
+
+    console.log('Received transcription request');
 
     if (!audioUrl && !audioData) {
       return res.status(400).json({ error: 'No audio data provided' });
@@ -34,35 +32,31 @@ export default async function handler(req, res) {
     const formData = new FormData();
     
     if (audioUrl) {
-      // For video URLs
       console.log('Downloading audio from URL:', audioUrl);
       const response = await fetch(audioUrl);
       if (!response.ok) {
-        throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to download audio: ${response.status}`);
       }
       const audioBlob = await response.blob();
       formData.append('file', audioBlob, 'audio.mp3');
     } else {
-      // For base64 audio data
       console.log('Processing base64 audio data');
-      // Remove data URL prefix if present
       const base64Data = audioData.replace(/^data:audio\/\w+;base64,/, '')
                                  .replace(/^data:application\/octet-stream;base64,/, '');
-      
-      // Convert base64 to buffer
       const buffer = Buffer.from(base64Data, 'base64');
-      
-      // Create blob from buffer
       const blob = new Blob([buffer], { type: 'audio/mp3' });
       formData.append('file', blob, 'audio.mp3');
     }
 
-    console.log('Calling whisper-api.com...');
+    console.log('Calling Whisper API with key:', whisperApiKey.substring(0, 10) + '...');
     
-    // Call free whisper-api.com
-    const whisperResponse = await fetch('https://whisper-api.com/api/v1/transcribe', {
+    // CORRECT ENDPOINT: https://api.whisper-api.com
+    const whisperResponse = await fetch('https://api.whisper-api.com/api/v1/transcribe', {
       method: 'POST',
       body: formData,
+      headers: {
+        'Authorization': `Bearer ${whisperApiKey}`
+      }
     });
 
     console.log('Whisper API response status:', whisperResponse.status);
@@ -74,7 +68,7 @@ export default async function handler(req, res) {
     }
 
     const result = await whisperResponse.json();
-    console.log('Transcription successful, length:', result.text?.length);
+    console.log('Transcription successful, text length:', result.text?.length);
     
     return res.status(200).json({ 
       transcription: result.text,
@@ -88,4 +82,4 @@ export default async function handler(req, res) {
       success: false 
     });
   }
-}
+    }
