@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     console.log('Calling Whisper API with key:', whisperApiKey.substring(0, 10) + '...');
     
     // CORRECT ENDPOINT: https://api.whisper-api.com
-    const whisperResponse = await fetch('https://api.whisper-api.com/api/v1/transcribe', {
+    const whisperResponse = await fetch('https://api.whisper-api.com', {
       method: 'POST',
       body: formData,
       headers: {
