@@ -1,0 +1,10 @@
+{
+  "name": "whisper-proxy",
+  "version": "1.0.0",
+  "description": "Proxy for whisper API",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
